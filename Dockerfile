@@ -25,9 +25,6 @@ RUN apt-get update \
     && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
 
-# Install PHP extensions.
-RUN docker-php-ext-install  bcmath curl opcache mbstring
-
 WORKDIR /var/www
 
 COPY --chown=www-data:www-data . .
@@ -36,14 +33,20 @@ COPY --chown=www-data:www-data . .
 COPY ./docker/php/php.ini /usr/local/etc/php/php.ini
 COPY ./docker/php/php-fpm.conf /usr/local/etc/php-fpm.d/www.conf
 COPY ./docker/nginx/nginx.conf /etc/nginx/nginx.conf
+# COPY ./docker/php/phpsqlsrv.ini /usr/local/etc/php/conf.d/phpsqlsrv.ini 
 
 # Install php-sqlsrv
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trusted.gpg.d/microsoft.asc \
     && curl https://packages.microsoft.com/config/debian/10/prod.list | tee /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && apt-get install -y msodbcsql17 unixodbc-dev \
-    && pecl install sqlsrv-5.2.0 \
-    && pecl install pdo_sqlsrv-5.2.0 
+    && pecl install sqlsrv-5.2.0 pdo_sqlsrv-5.2.0\
+    && echo "extension=pdo_sqlsrv.so" >> `php --ini | grep "Scan for additional .ini files" | sed -e "s|.*:\s*||"`/30-pdo_sqlsrv.ini \
+    && echo "extension=sqlsrv.so" >> `php --ini | grep "Scan for additional .ini files" | sed -e "s|.*:\s*||"`/30-sqlsrv.ini \
+    && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+
+# Install PHP extensions.
+RUN docker-php-ext-install  bcmath curl opcache mbstring pdo pdo_mysql mysqli
 
 # Run the entrypoint file.
 ENTRYPOINT [ "docker/entrypoint.sh" ]
